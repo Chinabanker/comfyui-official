@@ -3,6 +3,8 @@
 # - ensures ComfyUI-Manager exists (custom_nodes may come from a host mount)
 # - installs custom node requirements ONLY when they change (hash-stamped,
 #   stored in the persistent custom_nodes mount), so restarts are fast
+# - self-heals: verifies critical modules at boot even when the stamp matches
+#   (an interrupted pip install can leave the env "listed but broken")
 set -e
 cd /app/ComfyUI
 
@@ -13,6 +15,31 @@ compute_hash() {
     | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | awk '{print $1}'
 }
 
+# critical modules that heavy nodes (Impact-Pack, ReActor, VideoHelperSuite,
+# Easy-Use, ollama) need; if any is missing the env is considered broken
+check_critical() {
+  python3 - <<'PY'
+import importlib.util
+critical = ["cv2", "ultralytics", "segment_anything", "facexlib", "gfpgan",
+            "insightface", "onnxruntime", "einops", "spandrel", "matplotlib"]
+missing = [m for m in critical if importlib.util.find_spec(m) is None]
+if missing:
+    print("MISSING:" + ",".join(missing))
+    raise SystemExit(1)
+PY
+}
+
+install_deps() {
+  echo "[entrypoint] installing custom node requirements"
+  FAILED=0
+  for req in custom_nodes/*/requirements.txt; do
+    [ -f "$req" ] || continue
+    echo "[entrypoint] pip install -r $req"
+    pip install -q -r "$req" || { echo "[entrypoint] WARN failed: $req"; FAILED=1; }
+  done
+  return "$FAILED"
+}
+
 # ensure ComfyUI-Manager (mount may start empty)
 if [ ! -d custom_nodes/ComfyUI-Manager ]; then
   echo "[entrypoint] installing ComfyUI-Manager"
@@ -21,19 +48,29 @@ if [ ! -d custom_nodes/ComfyUI-Manager ]; then
 fi
 
 HASH="$(compute_hash || true)"
+STAMP_OK=0
 if [ -n "$HASH" ] && [ -f "$STAMP_FILE" ] && [ "$(cat "$STAMP_FILE" 2>/dev/null)" = "$HASH" ]; then
+  STAMP_OK=1
+fi
+
+if [ "$STAMP_OK" = "1" ] && check_critical >/dev/null 2>&1; then
   echo "[entrypoint] custom node requirements unchanged — skipping install (stamp match)"
-else
-  echo "[entrypoint] installing custom node requirements (idempotent)"
-  FAILED=0
-  for req in custom_nodes/*/requirements.txt; do
-    [ -f "$req" ] || continue
-    echo "[entrypoint] pip install -r $req"
-    pip install -q -r "$req" || { echo "[entrypoint] WARN failed: $req"; FAILED=1; }
-  done
-  if [ "$FAILED" = "0" ] && [ -n "$HASH" ]; then
+elif [ "$STAMP_OK" = "1" ]; then
+  echo "[entrypoint] stamp matches but critical modules missing — reinstalling (self-heal)"
+  rm -f "$STAMP_FILE"
+  if install_deps; then
     echo "$HASH" > "$STAMP_FILE"
-    echo "[entrypoint] deps installed — stamp written"
+    echo "[entrypoint] deps repaired — stamp rewritten"
+  else
+    echo "[entrypoint] some installs failed — will retry on next start"
+  fi
+else
+  echo "[entrypoint] no valid stamp — installing custom node requirements"
+  if install_deps; then
+    if [ -n "$HASH" ]; then
+      echo "$HASH" > "$STAMP_FILE"
+      echo "[entrypoint] deps installed — stamp written"
+    fi
   else
     echo "[entrypoint] some installs failed — will retry on next start"
   fi
