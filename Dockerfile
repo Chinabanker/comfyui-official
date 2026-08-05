@@ -39,6 +39,20 @@ RUN git clone --depth 1 https://github.com/Comfy-Org/ComfyUI.git /app/ComfyUI \
 RUN git clone --depth 1 https://github.com/Comfy-Org/ComfyUI-Manager.git /app/ComfyUI/custom_nodes/ComfyUI-Manager \
     && pip install -r /app/ComfyUI/custom_nodes/ComfyUI-Manager/requirements.txt
 
+# Pre-install heavy/common custom-node dependencies INTO THE IMAGE so that a
+# freshly recreated container boots fast (the entrypoint's critical-module
+# check then passes without a reinstall; the hash stamp still covers
+# requirement changes from the mounted custom_nodes).
+# - insightface/facexlib have py3.12 wheels; gfpgan/basicsr conflict with the
+#   modern torch stack -> install --no-deps
+# - basicsr/gfpgan import the removed torchvision API -> compat shim
+RUN pip install --no-cache-dir opencv-python ultralytics segment-anything \
+        insightface facexlib onnxruntime einops spandrel matplotlib \
+    && pip install --no-cache-dir --no-deps gfpgan basicsr \
+    && mkdir -p /venv/lib/python3.12/site-packages/torchvision/transforms \
+    && printf 'from torchvision.transforms.functional import rgb_to_grayscale\n' \
+        > /venv/lib/python3.12/site-packages/torchvision/transforms/functional_tensor.py
+
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
