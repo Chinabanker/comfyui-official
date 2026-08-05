@@ -91,6 +91,7 @@ services:
 |---|---|---|
 | `CLI_ARGS` | *(empty)* | Extra args for `main.py`, e.g. `--disable-xformers`, `--lowvram` |
 | `NVIDIA_VISIBLE_DEVICES` | `all` | GPU selection for the NVIDIA runtime |
+| `PIP_INDEX_URL` | *(unset)* | PyPI mirror for the startup dependency installer. Users in mainland China should set it to `https://pypi.tuna.tsinghua.edu.cn/simple` (or your local mirror) to avoid slow/timeout installs.
 
 ## 📁 Data layout (mounts)
 
