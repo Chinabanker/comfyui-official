@@ -1,0 +1,83 @@
+name: build-and-push
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # daily 00:00 UTC = 08:00 Beijing
+  workflow_dispatch: {}   # manual trigger
+
+env:
+  IMAGE_NS: chinabanker
+  IMAGE_REPO: comfyui-official
+  VARIANT: cu128
+  UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
+  KEEP_DATED_TAGS: 7
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # to commit UPSTREAM_HASH after a successful build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check upstream changes
+        id: check
+        run: |
+          HEAD=$(git ls-remote "$UPSTREAM_REPO" HEAD | awk '{print $1}')
+          echo "upstream_head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "repo_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          OLD=$(cat UPSTREAM_HASH 2>/dev/null || echo none)
+          echo "previous: $OLD"
+          if [ "$OLD" = "upstream=$HEAD repo=$GITHUB_SHA" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No upstream changes — skipping build."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build date
+        id: date
+        run: echo "date=$(date -u +%Y%m%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Login to Docker Hub
+        if: steps.check.outputs.changed == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: steps.check.outputs.changed == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        if: steps.check.outputs.changed == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NS }}/${{ env.IMAGE_REPO }}:${{ env.VARIANT }}
+            ${{ env.IMAGE_NS }}/${{ env.IMAGE_REPO }}:${{ env.VARIANT }}-${{ steps.date.outputs.date }}
+            ${{ env.IMAGE_NS }}/${{ env.IMAGE_REPO }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Record upstream hash
+        if: steps.check.outputs.changed == 'true'
+        run: |
+          echo "upstream=${{ steps.check.outputs.upstream_head }} repo=${{ steps.check.outputs.repo_sha }}" > UPSTREAM_HASH
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add UPSTREAM_HASH
+          git commit -m "chore: record last built upstream HEAD" || true
+          git push
+
+      - name: Prune old dated tags (keep ${{ env.KEEP_DATED_TAGS }})
+        if: always()
+        env:
+          DH_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: python3 .github/scripts/prune_tags.py
