@@ -21,7 +21,8 @@ check_critical() {
   python3 - <<'PY'
 import importlib.util
 critical = ["cv2", "ultralytics", "segment_anything", "facexlib", "gfpgan",
-            "insightface", "onnxruntime", "einops", "spandrel", "matplotlib"]
+            "insightface", "onnxruntime", "einops", "spandrel", "matplotlib",
+            "dill"]
 missing = [m for m in critical if importlib.util.find_spec(m) is None]
 if missing:
     print("MISSING:" + ",".join(missing))

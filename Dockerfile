@@ -47,7 +47,7 @@ RUN git clone --depth 1 https://github.com/Comfy-Org/ComfyUI-Manager.git /app/Co
 #   modern torch stack -> install --no-deps
 # - basicsr/gfpgan import the removed torchvision API -> compat shim
 RUN pip install --no-cache-dir opencv-python ultralytics segment-anything \
-        insightface facexlib onnxruntime einops spandrel matplotlib \
+        insightface facexlib onnxruntime einops spandrel matplotlib dill \
     && pip install --no-cache-dir --no-deps gfpgan basicsr \
     && mkdir -p /venv/lib/python3.12/site-packages/torchvision/transforms \
     && printf 'from torchvision.transforms.functional import rgb_to_grayscale\n' \
