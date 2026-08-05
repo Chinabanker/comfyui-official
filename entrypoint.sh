@@ -37,6 +37,18 @@ install_deps() {
     echo "[entrypoint] pip install -r $req"
     pip install -q -r "$req" || { echo "[entrypoint] WARN failed: $req"; FAILED=1; }
   done
+  # ReActor-family extras: not in any requirements.txt (installed by the node's
+  # own installer normally). insightface/facexlib have py3.12 wheels; gfpgan/
+  # basicsr conflict with the modern torch stack -> install --no-deps.
+  echo "[entrypoint] pip install extras (ReActor family)"
+  pip install -q insightface facexlib || { echo "[entrypoint] WARN extras (1/2)"; FAILED=1; }
+  pip install -q --no-deps gfpgan basicsr || { echo "[entrypoint] WARN extras (2/2)"; FAILED=1; }
+  # basicsr/gfpgan still import the removed torchvision API -> compat shim
+  SHIM="/venv/lib/python3.12/site-packages/torchvision/transforms/functional_tensor.py"
+  if [ ! -f "$SHIM" ]; then
+    echo "from torchvision.transforms.functional import rgb_to_grayscale" > "$SHIM"
+    echo "[entrypoint] wrote torchvision functional_tensor shim"
+  fi
   return "$FAILED"
 }
 
