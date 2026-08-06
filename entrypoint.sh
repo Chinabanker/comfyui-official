@@ -67,6 +67,18 @@ else
   echo "[entrypoint] node deps up to date (persistent dir, hash match)"
 fi
 
+# torch-family must NEVER come from the deps dir: pip --target resolves the
+# FULL transitive dependency tree, so packages like accelerate/transformers
+# drag in a PyPI torch (cu130/CPU in 2026) that would shadow the image-baked
+# cu128 build via PYTHONPATH and crash CUDA init. Remove it unconditionally
+# on every boot (idempotent: rm on missing paths is a no-op).
+rm -rf "$DEPS_DIR"/torch "$DEPS_DIR"/torchvision "$DEPS_DIR"/torchaudio \
+       "$DEPS_DIR"/torchgen "$DEPS_DIR"/triton "$DEPS_DIR"/nvidia \
+       "$DEPS_DIR"/torch-*.dist-info "$DEPS_DIR"/torchvision-*.dist-info \
+       "$DEPS_DIR"/torchaudio-*.dist-info "$DEPS_DIR"/triton-*.dist-info \
+       "$DEPS_DIR"/nvidia_*.dist-info "$DEPS_DIR"/torch*.libs 2>/dev/null || true
+echo "[entrypoint] torch-family cleaned from deps dir"
+
 # basicsr/gfpgan import the removed torchvision API -> compat shim (idempotent)
 SHIM="/venv/lib/python3.12/site-packages/torchvision/transforms/functional_tensor.py"
 if [ ! -f "$SHIM" ]; then
