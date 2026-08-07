@@ -105,3 +105,4 @@ docker build -t comfyui-official:cu130 . \
 
 - ComfyUI: [GPL-3.0](https://github.com/Comfy-Org/ComfyUI/blob/master/LICENSE)
 - 本仓库仅包含构建文件（Dockerfile、entrypoint、CI），不含任何 ComfyUI 代码
+- **源码 / 问题反馈**: [github.com/Chinabanker/comfyui-official](https://github.com/Chinabanker/comfyui-official) — 报告 bug、请求功能或查看构建流水线
