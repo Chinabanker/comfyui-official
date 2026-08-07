@@ -15,7 +15,7 @@ import urllib.error
 NS = "chinabanker"
 REPO = "comfyui-official"
 KEEP = int(os.environ.get("KEEP_DATED_TAGS", "7"))
-PREFIX = "cu128-"
+PREFIX = "cu130-"
 
 
 def exchange_jwt(pat: str) -> str:

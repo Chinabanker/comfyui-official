@@ -1,128 +1,107 @@
-# ComfyUI(官方源码)— CUDA 12.8 Docker 镜像
+# ComfyUI（官方源码）— CUDA 13.0 Docker 镜像
 
-基于 **Comfy-Org/ComfyUI 官方源码** 自建,使用 **cu128 系列最新版 PyTorch(2.11.0)**。针对 **TrueNAS SCALE 25.10+** 及任何驱动支持 CUDA 12.8 的 Linux 主机优化。
+基于 **Comfy-Org/ComfyUI 官方源码** 自建的 Docker 镜像，使用 **cu130 系列 PyTorch（2.13.0+cu130）**。针对 **TrueNAS SCALE 26+** 及任何支持 CUDA 13.0 的 Linux 主机优化。
 
 English: [README.md](README.md)
 
 ## ✨ 特性
 
-- 官方 ComfyUI + 官方 ComfyUI-Manager
-- **PyTorch 2.11.0+cu128**:cu128 线最新版,原生 **sm_120** 内核(RTX 50 系),完整支持 30/40 系
-- **Python 3.12**,自定义节点生态兼容性最佳
-- 默认无 xFormers(Blackwell 最佳实践,可用 `CLI_ARGS` 调整)
-- 入口脚本启动时自动安装自定义节点依赖(幂等)
-- root 运行 + NVIDIA GPU 直通
+- **官方 ComfyUI**（[github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)）锁定 **v0.30.2** + 官方 **ComfyUI-Manager**
+- **PyTorch 2.13.0+cu130** — cu130 系列，原生 **sm_120** 内核（RTX 50 系列），同时完整支持 RTX 30/40 系列
+- **CUDA 13.0.3 运行时** — 修复 CUDA 12.8 系列在 Blackwell（sm_120）上无法修复的 cuBLAS bug（黑图 / 马赛克 / 非法内存访问）
+- **comfy-aimdo 0.4.13** — 具备 NVML 压力感知的 DynamicVRAM（修复模型重载/性能回退问题）
+- **Python 3.12** — 与自定义节点生态最大兼容
+- **预装 gcc/g++/python3-dev** — cu130 下 Triton JIT 编译必需
+- 默认不启用 xFormers（Blackwell GPU 推荐；见 `CLI_ARGS`）
+- 入口脚本**自动安装自定义节点依赖**（幂等，容器重建后保留）
+- 以 root 运行，支持 NVIDIA GPU 直通
 
-## ⚙️ 要求
+## ⚙️ 环境要求
 
-| 项目 | 要求 |
+| 要求 | 说明 |
 |---|---|
-| GPU | NVIDIA **RTX 30/40/50 系**(见兼容表) |
-| 驱动 | 需支持 **CUDA 12.8**(`nvidia-smi` 显示 "CUDA Version: 12.8" 及以上,Linux 驱动 ≥ 570 分支) |
-| TrueNAS SCALE 25.10 | ✅ 自带驱动 570.172.08(CUDA 12.8) |
-| TrueNAS SCALE 24.10 及更早 | ❌ 自带驱动过旧(CUDA 12.4/12.5) |
-| 运行时 | Docker + NVIDIA Container Toolkit,或 TrueNAS Apps 服务 |
+| GPU | NVIDIA **RTX 30 / 40 / 50** 系列（见 [GPU 兼容性](#gpu-兼容性)） |
+| 驱动 | 必须支持 **CUDA 13.0** — 运行 `nvidia-smi` 查看 "CUDA Version: 13.0" 或更高（Linux 驱动 ≥ 590 分支） |
+| TrueNAS SCALE 26 | ✅ 内置驱动 590.44.01（CUDA 13.0） |
+| TrueNAS SCALE 25.10 或更旧 | ❌ 内置驱动 570.x 太旧，不支持 CUDA 13.0 — **必须升级到 TrueNAS 26**（见下文） |
+| 运行时 | Docker + NVIDIA Container Toolkit，或 TrueNAS Apps 服务 |
 
-## 🏷️ 标签
+> ⚠️ **TrueNAS 25.10 用户：** 内置驱动（570.172.08）仅支持 CUDA 12.8。CUDA 12.8 系列在 Blackwell（sm_120）GPU（RTX 50 系列）上存在**无法修复的 cuBLAS bug**，会导致 ComfyUI 黑图 / 马赛克 / 非法内存访问。`cu128` 标签**已移除** — 请升级到 TrueNAS 26（驱动 590.x）后使用本镜像。
+
+## 🏷️ 镜像标签
 
 | 标签 | 说明 |
 |---|---|
-| `cu128` | 滚动标签,定期重建 |
-| `cu128-YYYYMMDD` | 日期戳快照 —— 推荐用于可复现部署 |
+| `cu130` | 滚动标签，上游 ComfyUI 更新时自动重建 |
+| `cu130-YYYYMMDD` | 按日期构建（保留 7 天） |
 
-## 🚀 快速开始(Docker)
+## 🚀 快速开始
+
+### TrueNAS SCALE 26（Apps）
+
+1. 添加自定义应用，镜像指向 `chinabanker/comfyui-official:cu130`
+2. 挂载持久化存储：
+   - `/app/ComfyUI/models` → 例如 `/mnt/pool/Comfyui/models`
+   - `/app/ComfyUI/output` → 例如 `/mnt/pool/Comfyui/output`
+   - `/app/ComfyUI/custom_nodes` → 例如 `/mnt/pool/Comfyui/custom_nodes`
+   - `/root/.local` → 例如 `/mnt/pool/Comfyui/deps`（节点依赖持久化）
+3. 启用 GPU 直通
+4. 启动后访问 `http://<主机IP>:8188`
+
+### Docker CLI
 
 ```bash
-mkdir -p models input output workflows custom_nodes user-data hf-cache torch-cache
-
-docker run -d --name comfyui \
-  --runtime nvidia \
-  -e NVIDIA_VISIBLE_DEVICES=all \
-  -e CLI_ARGS=--disable-xformers \
+docker run -d --gpus all \
   -p 8188:8188 \
-  -v "$(pwd)/models:/app/ComfyUI/models" \
-  -v "$(pwd)/input:/app/ComfyUI/input" \
-  -v "$(pwd)/output:/app/ComfyUI/output" \
-  -v "$(pwd)/workflows:/app/ComfyUI/user/default/workflows" \
-  -v "$(pwd)/custom_nodes:/app/ComfyUI/custom_nodes" \
-  -v "$(pwd)/user-data:/app/ComfyUI/user" \
-  -v "$(pwd)/hf-cache:/root/.cache/huggingface/hub" \
-  -v "$(pwd)/torch-cache:/root/.cache/torch/hub" \
-  chinabanker/comfyui-official:cu128
+  -v /mnt/pool/Comfyui/models:/app/ComfyUI/models \
+  -v /mnt/pool/Comfyui/output:/app/ComfyUI/output \
+  -v /mnt/pool/Comfyui/custom_nodes:/app/ComfyUI/custom_nodes \
+  -v /mnt/pool/Comfyui/deps:/root/.local \
+  -e CLI_ARGS="--listen 0.0.0.0 --port 8188" \
+  chinabanker/comfyui-official:cu130
 ```
 
-容器起来后访问 <http://localhost:8188>。
+## ⚙️ CLI_ARGS
 
-## 🖥️ TrueNAS SCALE(Custom App 安装)
+入口脚本运行 `python3 main.py --listen 0.0.0.0 --port 8188 ${CLI_ARGS}`。默认是干净、稳定的配置 — **cu130 上无需任何 workaround 参数**：
 
-1. Applications → **Installed Applications** → **Add** → **Custom App**
-2. Application Name: `comfyui-official`(或其他不重名的名字)
-3. Version: `1.0.0`
-4. 在 **Custom Docker Compose Configuration** 粘贴:
+```bash
+# 推荐（稳定默认）
+CLI_ARGS=""
 
-```yaml
-services:
-  comfyui-official:
-    image: chinabanker/comfyui-official:cu128
-    container_name: comfyui-official
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - CLI_ARGS=--disable-xformers
-    ports:
-      - "8188:8188"
-    volumes:
-      - /mnt/<POOL>/Comfyui/models:/app/ComfyUI/models
-      - /mnt/<POOL>/Comfyui/input:/app/ComfyUI/input
-      - /mnt/<POOL>/Comfyui/output:/app/ComfyUI/output
-      - /mnt/<POOL>/Comfyui/workflows:/app/ComfyUI/user/default/workflows
-      - /mnt/<POOL>/Comfyui/custom_nodes:/app/ComfyUI/custom_nodes
-      - /mnt/<POOL>/Comfyui/user:/app/ComfyUI/user
-      - /mnt/<POOL>/Comfyui/hf-cache:/root/.cache/huggingface/hub
-      - /mnt/<POOL>/Comfyui/torch-cache:/root/.cache/torch/hub
-    restart: unless-stopped
+# 示例：附加选项
+CLI_ARGS="--preview-method none"
 ```
 
-> ⚠️ 首次启动需拉取约 7GB 镜像并为自定义节点安装依赖,请等待几分钟。
+说明：
+- cu128 时代的 `--lowvram` / `--force-fp32` / `--disable-dynamic-vram` 等 workaround **在 cu130 上不再需要** — Blackwell cuBLAS bug 已在 CUDA 层面修复
+- DynamicVRAM（comfy-aimdo）自动处理与其他 GPU 应用（如 Ollama）共存
+- RTX 50 系列可考虑使用 **NVFP4 量化模型**（如 FLUX.2 Klein），速度提升 2.5 倍、VRAM 降低 60%
 
-## 🌐 环境变量
+## 📦 预装内容
 
-| 变量 | 默认 | 说明 |
+- PyTorch 2.13.0+cu130、torchvision、torchaudio（锁定于 `/venv/constraints.txt`）
+- comfy-aimdo 0.4.13、comfy-kitchen 0.2.26
+- 自定义节点生态：opencv-python、ultralytics、segment-anything、insightface、facexlib、onnxruntime、onnx、einops、spandrel、matplotlib、dill、piexif、transformers、accelerate、diffusers、timm、kornia、scikit-image、scikit-learn、scipy、pandas、safetensors、sentencepiece、tokenizers、albumentations、gguf、av、imageio、imageio-ffmpeg、omegaconf、fvcore、iopath、numexpr、psutil
+- gfpgan/basicsr（--no-deps）+ torchvision 兼容 shim
+- gcc/g++、python3-dev、ffmpeg、GL 库
+
+## 🛠️ 本地构建
+
+```bash
+docker build -t comfyui-official:cu130 . \
+  --build-arg PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple   # 可选镜像源
+```
+
+## GPU 兼容性
+
+| GPU | 架构 | cu130 支持 |
 |---|---|---|
-| `CLI_ARGS` | 空 | `main.py` 的附加参数,如 `--disable-xformers`、`--lowvram` |
-| `NVIDIA_VISIBLE_DEVICES` | `all` | NVIDIA runtime 的 GPU 选择 |
+| RTX 30 系列 | Ampere (sm_86/89) | ✅（驱动 ≥ 590） |
+| RTX 40 系列 | Ada (sm_89) | ✅（驱动 ≥ 590） |
+| RTX 50 系列 | Blackwell (sm_120) | ✅ **推荐**（原生 sm_120 内核，修复 cu128 bug） |
 
-## 📁 数据目录(挂载)
+## 📄 许可证与上游
 
-| 宿主机路径 | 容器内路径 | 用途 |
-|---|---|---|
-| `.../models` | `/app/ComfyUI/models` | 模型(checkpoint/LoRA/VAE 等) |
-| `.../input` | `/app/ComfyUI/input` | 输入图片 |
-| `.../output` | `/app/ComfyUI/output` | 生成图片 |
-| `.../workflows` | `/app/ComfyUI/user/default/workflows` | 已保存的工作流 |
-| `.../custom_nodes` | `/app/ComfyUI/custom_nodes` | 自定义节点(重建镜像后保留) |
-| `.../user` | `/app/ComfyUI/user` | 用户设置与 Manager 数据库 |
-| `.../hf-cache` | `/root/.cache/huggingface/hub` | HuggingFace 模型缓存 |
-| `.../torch-cache` | `/root/.cache/torch/hub` | torch hub 缓存 |
-
-## 🎮 GPU 兼容性
-
-CUDA 12.8 / PyTorch cu128 支持以下架构(原生内核或 PTX JIT):
-
-| GPU | 架构 | cu128 |
-|---|---|---|
-| RTX 50 系(5090/5080/5070) | Blackwell sm_120 | ✅ 原生 |
-| RTX 40 系(4090/4080/…) | Ada sm_89 | ✅ |
-| RTX 30 系(3090/3080/…) | Ampere sm_80/86 | ✅ |
-| RTX 20/16 系 | Turing sm_75 | ✅ |
-
-**驱动注意**:cu128 镜像需要宿主驱动报告 **CUDA ≥ 12.8**。TrueNAS SCALE 需 **25.10 或更新**;Linux 桌面需驱动 ≥ 570 分支。
-
-## 🔄 更新
-
-- **ComfyUI 代码与自定义节点**:用网页里的 **ComfyUI-Manager** 更新(推荐,无需重建容器)。
-- **torch / 基础环境**:拉取新的滚动标签并重建容器,或基于 [Dockerfile](https://github.com/Chinabanker/comfyui-official) 本地重建。
-
-## ⚠️ 免责声明
-
-社区维护镜像,基于官方上游源码构建。与 Comfy-Org 无关联,也不代表其立场。维护者不对任何损坏或数据丢失负责。
+- ComfyUI: [GPL-3.0](https://github.com/Comfy-Org/ComfyUI/blob/master/LICENSE)
+- 本仓库仅包含构建文件（Dockerfile、entrypoint、CI），不含任何 ComfyUI 代码

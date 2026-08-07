@@ -8,7 +8,7 @@ on:
 env:
   IMAGE_NS: chinabanker
   IMAGE_REPO: comfyui-official
-  VARIANT: cu128
+  VARIANT: cu130
   UPSTREAM_REPO: https://github.com/Comfy-Org/ComfyUI.git
   KEEP_DATED_TAGS: 7
 

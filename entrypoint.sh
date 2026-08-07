@@ -1,28 +1,30 @@
 #!/bin/bash
 # Entrypoint for the self-built official ComfyUI image.
 #
-# Dependency strategy (persistent installs):
-#   Node dependencies are installed ONCE into a persistent directory on the
-#   data mount (/app/ComfyUI/deps) instead of into the ephemeral container
-#   layer. A requirements hash is stored next to them. On boot:
-#     - hash matches  -> nothing to do (fast boot, even after a container
-#                        recreate, because the deps live on the mount)
-#     - no hash / hash changed -> (re)install into the mount dir (incremental:
-#                        pip --target skips already-satisfied packages)
-#   torch/torchvision/torchaudio are EXCLUDED from the target installs so the
-#   image-baked cu128 builds always win.
+# Dependency strategy (aligned with the battle-tested yanwk/comfyui-boot model):
+#   PIP_USER=true -> every pip install (entrypoint AND ComfyUI-Manager) lands
+#   in ~/.local (user site), which is mounted on persistent storage, so node
+#   dependencies survive container recreates. The venv is created with
+#   include-system-site-packages=true (pyvenv.cfg), which enables the user
+#   site; sys.path order (venv site-packages BEFORE user site) guarantees the
+#   image-baked cu130 torch can never be shadowed by a PyPI torch dragged in
+#   as a transitive dependency.
 set -e
 cd /app/ComfyUI
 
-DEPS_DIR="/app/ComfyUI/deps"
-DEPS_HASH_FILE="$DEPS_DIR/.deps_hash"
-export PYTHONPATH="$DEPS_DIR:$PYTHONPATH"
+export PIP_USER=true
+export PIP_ROOT_USER_ACTION=ignore
+export PIP_NO_BUILD_ISOLATION=1
+
+USER_SITE="$HOME/.local/lib/python3.12/site-packages"
+DEPS_HASH_FILE="$HOME/.local/.deps_hash"
+export PATH="${PATH}:$HOME/.local/bin"
 
 # ensure ComfyUI-Manager (custom_nodes mount may start empty)
 if [ ! -d custom_nodes/ComfyUI-Manager ]; then
   echo "[entrypoint] installing ComfyUI-Manager"
   git clone --depth 1 https://github.com/Comfy-Org/ComfyUI-Manager.git custom_nodes/ComfyUI-Manager
-  pip install -r custom_nodes/ComfyUI-Manager/requirements.txt
+  pip install --user -r custom_nodes/ComfyUI-Manager/requirements.txt
 fi
 
 compute_hash() {
@@ -41,21 +43,25 @@ elif [ -n "$HASH" ] && [ "$(cat "$DEPS_HASH_FILE" 2>/dev/null)" != "$HASH" ]; th
 fi
 
 if [ "$needs_install" = "1" ]; then
-  echo "[entrypoint] installing node dependencies to persistent dir: $DEPS_DIR"
-  mkdir -p "$DEPS_DIR"
+  echo "[entrypoint] installing node dependencies to persistent user site: $USER_SITE"
+  mkdir -p "$USER_SITE"
   FAILED=0
   for req in custom_nodes/*/requirements.txt; do
     [ -f "$req" ] || continue
-    echo "[entrypoint] pip install --target -r $req"
-    # filter out comments and torch-family (baked cu128 must win)
-    grep -v -E '^(#|torch|torchvision|torchaudio)' "$req" > /tmp/req_filtered.txt || true
-    pip install -q --target "$DEPS_DIR" -r /tmp/req_filtered.txt \
+    echo "[entrypoint] pip install --user -r $req"
+    # filter out comments, git+ URLs (lazy/niche deps like sam2 — cloned from
+    # GitHub at install time, unreliable from some networks; Impact-Pack etc.
+    # import fine without them and ComfyUI-Manager installs them on demand)
+    # and torch-family lines (baked cu130 must win; the sys.path order already
+    # guarantees it, this just avoids the download)
+    grep -v -E '^(#|git\+|torch|torchvision|torchaudio)' "$req" > /tmp/req_filtered.txt || true
+    pip install --user -q -c /venv/constraints.txt -r /tmp/req_filtered.txt \
       || { echo "[entrypoint] WARN failed: $req"; FAILED=1; }
   done
-  echo "[entrypoint] pip install --target extras (ReActor family)"
-  pip install -q --target "$DEPS_DIR" insightface facexlib \
+  echo "[entrypoint] pip install --user extras (ReActor family)"
+  pip install --user -q -c /venv/constraints.txt insightface facexlib \
     || { echo "[entrypoint] WARN extras 1/2"; FAILED=1; }
-  pip install -q --target "$DEPS_DIR" --no-deps gfpgan basicsr \
+  pip install --user -q -c /venv/constraints.txt --no-deps gfpgan basicsr \
     || { echo "[entrypoint] WARN extras 2/2"; FAILED=1; }
   if [ "$FAILED" = "0" ] && [ -n "$HASH" ]; then
     echo "$HASH" > "$DEPS_HASH_FILE"
@@ -64,20 +70,17 @@ if [ "$needs_install" = "1" ]; then
     echo "[entrypoint] some installs failed — will retry on next start"
   fi
 else
-  echo "[entrypoint] node deps up to date (persistent dir, hash match)"
+  echo "[entrypoint] node deps up to date (user site, hash match)"
 fi
 
-# torch-family must NEVER come from the deps dir: pip --target resolves the
-# FULL transitive dependency tree, so packages like accelerate/transformers
-# drag in a PyPI torch (cu130/CPU in 2026) that would shadow the image-baked
-# cu128 build via PYTHONPATH and crash CUDA init. Remove it unconditionally
-# on every boot (idempotent: rm on missing paths is a no-op).
-rm -rf "$DEPS_DIR"/torch "$DEPS_DIR"/torchvision "$DEPS_DIR"/torchaudio \
-       "$DEPS_DIR"/torchgen "$DEPS_DIR"/triton "$DEPS_DIR"/nvidia \
-       "$DEPS_DIR"/torch-*.dist-info "$DEPS_DIR"/torchvision-*.dist-info \
-       "$DEPS_DIR"/torchaudio-*.dist-info "$DEPS_DIR"/triton-*.dist-info \
-       "$DEPS_DIR"/nvidia_*.dist-info "$DEPS_DIR"/torch*.libs 2>/dev/null || true
-echo "[entrypoint] torch-family cleaned from deps dir"
+# belt-and-suspenders: purge any torch-family that a transitive dependency
+# dragged into the user site (should never shadow the baked cu130 thanks to
+# sys.path order, but keep the user site clean anyway). Idempotent.
+rm -rf "$USER_SITE"/torch "$USER_SITE"/torchvision "$USER_SITE"/torchaudio \
+       "$USER_SITE"/torchgen "$USER_SITE"/triton "$USER_SITE"/nvidia \
+       "$USER_SITE"/torch-*.dist-info "$USER_SITE"/torchvision-*.dist-info \
+       "$USER_SITE"/torchaudio-*.dist-info "$USER_SITE"/triton-*.dist-info \
+       "$USER_SITE"/nvidia_*.dist-info "$USER_SITE"/torch*.libs 2>/dev/null || true
 
 # basicsr/gfpgan import the removed torchvision API -> compat shim (idempotent)
 SHIM="/venv/lib/python3.12/site-packages/torchvision/transforms/functional_tensor.py"
