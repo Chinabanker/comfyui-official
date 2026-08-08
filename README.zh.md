@@ -6,7 +6,7 @@ English: [README.md](README.md)
 
 ## ✨ 特性
 
-- **官方 ComfyUI**（[github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)）锁定 **v0.30.2** + 官方 **ComfyUI-Manager**
+- **官方 ComfyUI**（[github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)）锁定 **v0.31.0** + 官方 **ComfyUI-Manager**
 - **PyTorch 2.13.0+cu130** — cu130 系列，原生 **sm_120** 内核（RTX 50 系列），同时完整支持 RTX 30/40 系列
 - **CUDA 13.0.3 运行时** — 修复 CUDA 12.8 系列在 Blackwell（sm_120）上无法修复的 cuBLAS bug（黑图 / 马赛克 / 非法内存访问）
 - **comfy-aimdo 0.4.13** — 具备 NVML 压力感知的 DynamicVRAM（修复模型重载/性能回退问题）
