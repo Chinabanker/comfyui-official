@@ -61,6 +61,29 @@ docker run -d --gpus all \
   chinabanker/comfyui-official:cu130
 ```
 
+## 🚀 SageAttention（视频生成加速）
+
+本仓库在 [GitHub Release `sageattention-2.2.0-cu130`](https://github.com/Chinabanker/comfyui-official/releases/tag/sageattention-2.2.0-cu130)
+发布了**与本镜像完全匹配的 SageAttention 2.2.0 预编译 wheel**：
+
+- torch 2.13.0+cu130 / CUDA 13.0 / Python 3.12 / linux x86_64
+- 专为 **sm_120（RTX 50 系列）** 编译（NVCC 13.0.88），含 SageAttention2++ CUDA 内核
+  （INT8 QK + FP8 PV）与 Triton varlen 内核
+- 源码：[thu-ml/SageAttention](https://github.com/thu-ml/SageAttention) main（v2.2.0）
+
+在运行中的容器内安装（经 `/root/.local` 挂载，容器重建后依然生效）：
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/Chinabanker/comfyui-official/main/scripts/install_sageattention.sh)
+```
+
+安装后**重启 ComfyUI**。kijai 视频节点（WanVideoWrapper、HunyuanVideoWrapper 等）
+会自动探测 `sageattention`——在模型加载节点中选择 `attention_mode = sageattention`
+即可，RTX 50 系列注意力部分提速约 2-3 倍。
+
+> 提示：自行源码编译需要完整 CUDA 13.0 工具链（`apt-get install cuda-toolkit-13-0`），
+> 直接用预编译 wheel 可免去这一步。
+
 ## ⚙️ CLI_ARGS
 
 入口脚本运行 `python3 main.py --listen 0.0.0.0 --port 8188 ${CLI_ARGS}`。默认是干净、稳定的配置 — **cu130 上无需任何 workaround 参数**：

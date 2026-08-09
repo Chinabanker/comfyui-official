@@ -61,6 +61,30 @@ docker run -d --gpus all \
   chinabanker/comfyui-official:cu130
 ```
 
+## 🚀 SageAttention (video-generation acceleration)
+
+A **prebuilt SageAttention 2.2.0 wheel** for this exact stack is published in the
+[GitHub Release `sageattention-2.2.0-cu130`](https://github.com/Chinabanker/comfyui-official/releases/tag/sageattention-2.2.0-cu130):
+
+- torch 2.13.0+cu130 / CUDA 13.0 / Python 3.12 / linux x86_64
+- Compiled for **sm_120** (RTX 50 series) with NVCC 13.0.88 — includes the
+  SageAttention2++ CUDA kernels (INT8 QK + FP8 PV) and the Triton varlen kernel
+- Source: [thu-ml/SageAttention](https://github.com/thu-ml/SageAttention) main (v2.2.0)
+
+Install inside the running container (persists across container recreates via the
+`/root/.local` mount):
+
+```bash
+bash <(curl -sL https://raw.githubusercontent.com/Chinabanker/comfyui-official/main/scripts/install_sageattention.sh)
+```
+
+Then **restart ComfyUI**. kijai video wrappers (WanVideoWrapper, HunyuanVideoWrapper,
+etc.) auto-detect `sageattention` — select `attention_mode = sageattention` in the
+model loader node for ~2-3× faster attention on RTX 50 series.
+
+> Note: building from source yourself requires the full CUDA 13.0 toolkit
+> (`apt-get install cuda-toolkit-13-0`) — the wheel avoids that.
+
 ## ⚙️ CLI_ARGS
 
 The entrypoint runs `python3 main.py --listen 0.0.0.0 --port 8188 ${CLI_ARGS}`. Defaults are the clean, stable configuration — **no workaround flags needed** on cu130:
