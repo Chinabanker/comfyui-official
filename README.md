@@ -6,7 +6,7 @@ Self-built image from the **official Comfy-Org/ComfyUI** source code, running th
 
 ## ✨ Highlights
 
-- **Official ComfyUI** ([github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)) pinned to **v0.33.3** + **ComfyUI-Manager** (official)
+- **Official ComfyUI** ([github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)) pinned to **v0.33.4** + **ComfyUI-Manager** (official)
 - **PyTorch 2.13.0+cu130** — the cu130 line with native **sm_120** kernels (RTX 50 series), plus full support for RTX 30/40 series
 - **CUDA 13.0.3 runtime** — fixes the unfixable Blackwell (sm_120) cuBLAS bugs in the CUDA 12.8 line (black images / mosaic artifacts / illegal memory access)
 - **comfy-aimdo 0.4.13** — DynamicVRAM with NVML pressure awareness (model reload/regression fixes)
