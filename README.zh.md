@@ -6,10 +6,10 @@ English: [README.md](README.md)
 
 ## ✨ 特性
 
-- **官方 ComfyUI**（[github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)）锁定 **v0.33.4** + 官方 **ComfyUI-Manager**
+- **官方 ComfyUI**（[github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)）锁定 **v0.34.0** + 官方 **ComfyUI-Manager**
 - **PyTorch 2.13.0+cu130** — cu130 系列，原生 **sm_120** 内核（RTX 50 系列），同时完整支持 RTX 30/40 系列
 - **CUDA 13.0.3 运行时** — 修复 CUDA 12.8 系列在 Blackwell（sm_120）上无法修复的 cuBLAS bug（黑图 / 马赛克 / 非法内存访问）
-- **comfy-aimdo 0.4.13** — 具备 NVML 压力感知的 DynamicVRAM（修复模型重载/性能回退问题）
+- **comfy-aimdo 0.4.15** — 具备 NVML 压力感知的 DynamicVRAM（修复模型重载/性能回退问题）
 - **Python 3.12** — 与自定义节点生态最大兼容
 - **预装 gcc/g++/python3-dev** — cu130 下 Triton JIT 编译必需
 - 默认不启用 xFormers（Blackwell GPU 推荐；见 `CLI_ARGS`）
@@ -104,7 +104,7 @@ CLI_ARGS="--preview-method none"
 ## 📦 预装内容
 
 - PyTorch 2.13.0+cu130、torchvision、torchaudio（锁定于 `/venv/constraints.txt`）
-- comfy-aimdo 0.4.13、comfy-kitchen 0.2.26
+- comfy-aimdo 0.4.15、comfy-kitchen 0.2.26
 - 自定义节点生态：opencv-python、ultralytics、segment-anything、insightface、facexlib、onnxruntime、onnx、einops、spandrel、matplotlib、dill、piexif、transformers、accelerate、diffusers、timm、kornia、scikit-image、scikit-learn、scipy、pandas、safetensors、sentencepiece、tokenizers、albumentations、gguf、av、imageio、imageio-ffmpeg、omegaconf、fvcore、iopath、numexpr、psutil
 - gfpgan/basicsr（--no-deps）+ torchvision 兼容 shim
 - gcc/g++、python3-dev、ffmpeg、GL 库

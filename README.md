@@ -6,10 +6,10 @@ Self-built image from the **official Comfy-Org/ComfyUI** source code, running th
 
 ## ✨ Highlights
 
-- **Official ComfyUI** ([github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)) pinned to **v0.33.4** + **ComfyUI-Manager** (official)
+- **Official ComfyUI** ([github.com/Comfy-Org/ComfyUI](https://github.com/Comfy-Org/ComfyUI)) pinned to **v0.34.0** + **ComfyUI-Manager** (official)
 - **PyTorch 2.13.0+cu130** — the cu130 line with native **sm_120** kernels (RTX 50 series), plus full support for RTX 30/40 series
 - **CUDA 13.0.3 runtime** — fixes the unfixable Blackwell (sm_120) cuBLAS bugs in the CUDA 12.8 line (black images / mosaic artifacts / illegal memory access)
-- **comfy-aimdo 0.4.13** — DynamicVRAM with NVML pressure awareness (model reload/regression fixes)
+- **comfy-aimdo 0.4.15** — DynamicVRAM with NVML pressure awareness (model reload/regression fixes)
 - **Python 3.12** — maximum compatibility with the custom-node ecosystem
 - **gcc/g++/python3-dev pre-installed** — required for Triton JIT compilation on cu130
 - No xFormers by default (recommended for Blackwell GPUs; see `CLI_ARGS`)
@@ -105,7 +105,7 @@ Notes:
 ## 📦 What's Pre-installed
 
 - PyTorch 2.13.0+cu130, torchvision, torchaudio (pinned in `/venv/constraints.txt`)
-- comfy-aimdo 0.4.13, comfy-kitchen 0.2.26
+- comfy-aimdo 0.4.15, comfy-kitchen 0.2.26
 - Custom-node ecosystem: opencv-python, ultralytics, segment-anything, insightface, facexlib, onnxruntime, onnx, einops, spandrel, matplotlib, dill, piexif, transformers, accelerate, diffusers, timm, kornia, scikit-image, scikit-learn, scipy, pandas, safetensors, sentencepiece, tokenizers, albumentations, gguf, av, imageio, imageio-ffmpeg, omegaconf, fvcore, iopath, numexpr, psutil
 - gfpgan/basicsr (--no-deps) + torchvision compat shim
 - gcc/g++, python3-dev, ffmpeg, GL libraries
