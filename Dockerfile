@@ -44,9 +44,9 @@ RUN pip list --format=freeze \
     && echo "Pinned:" && cat /venv/constraints.txt
 
 # Official ComfyUI from github.com/Comfy-Org/ComfyUI
-# Pinned to v0.34.3 (latest release tag as of 2026-09-03)
+# Pinned to v0.34.4 (latest release tag as of 2026-09-05)
 WORKDIR /app
-RUN git clone --depth 1 --branch v0.34.3 https://github.com/Comfy-Org/ComfyUI.git /app/ComfyUI \
+RUN git clone --depth 1 --branch v0.34.4 https://github.com/Comfy-Org/ComfyUI.git /app/ComfyUI \
     && PIP_INDEX_URL="${PIP_INDEX_URL:-}" pip install -r /app/ComfyUI/requirements.txt \
     && PIP_INDEX_URL="${PIP_INDEX_URL:-}" pip install --upgrade comfy-aimdo==0.4.15
 
