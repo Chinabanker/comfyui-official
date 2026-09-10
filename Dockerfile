@@ -44,11 +44,11 @@ RUN pip list --format=freeze \
     && echo "Pinned:" && cat /venv/constraints.txt
 
 # Official ComfyUI from github.com/Comfy-Org/ComfyUI
-# Pinned to v0.34.6 (latest release tag as of 2026-09-08)
+# Pinned to v0.35.0 (latest release tag as of 2026-09-10)
 WORKDIR /app
-RUN git clone --depth 1 --branch v0.34.6 https://github.com/Comfy-Org/ComfyUI.git /app/ComfyUI \
+RUN git clone --depth 1 --branch v0.35.0 https://github.com/Comfy-Org/ComfyUI.git /app/ComfyUI \
     && PIP_INDEX_URL="${PIP_INDEX_URL:-}" pip install -r /app/ComfyUI/requirements.txt \
-    && PIP_INDEX_URL="${PIP_INDEX_URL:-}" pip install --upgrade comfy-aimdo==0.4.15
+    && PIP_INDEX_URL="${PIP_INDEX_URL:-}" pip install --upgrade comfy-aimdo==0.5.3
 
 # ComfyUI-Manager (official) — kept in the image; entrypoint re-installs if the
 # custom_nodes mount does not provide it
